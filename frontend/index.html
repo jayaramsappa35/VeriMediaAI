@@ -4775,6 +4775,16 @@ async function submitToReferenceDataset() {
 
   // Generate deterministic embedding from file metadata
   const embedding = detEmb(file.name, file.size, contentType);
+  // Safe scenario mapping for backend compatibility
+  function mapScenario(contentType) {
+    const mapping = {
+      news: "news",
+      entertainment: "entertainment",
+      education: "education"
+    };
+    return mapping[contentType] || "normal";
+  }
+
   const hash = genHash(file);
   const assetId = 'USR-' + Date.now().toString(36).toUpperCase();
 
@@ -4783,7 +4793,7 @@ async function submitToReferenceDataset() {
     label: title || file.name,
     hash: hash,
     source: 'User Upload',
-    scenario: contentType==='sports'?'sports':contentType==='news'?'news':contentType==='entertainment'?'entertainment':'any',
+    scenario: mapScenario(contentType),
     similarity: 0.85, // baseline similarity for future matches
     embedding: embedding,
     metadata: { contentType, title, tags, ownership: true, filename: file.name, fileSize: file.size },
@@ -4822,7 +4832,7 @@ try {
   showRDMStatus('🤖 Running AI analysis (Gemini)...', 'blue');
 
   const analysisResult = await window.VeriMediaAPI.analyze({
-    scenario: newAsset.scenario,
+    scenario: mapScenario(contentType),
     contentType: contentType,
     matches: [],
     fileName: file.name,
