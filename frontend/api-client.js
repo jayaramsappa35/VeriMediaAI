@@ -77,24 +77,12 @@
     aiDmca: (params, apiKey) => post('/api/report/ai-dmca', params, apiKey),
   };
 
-  // ── Intercept AI calls to route through backend ──────────────────────────
-  // This patches the existing callClaude function once the page loads,
-  // so the frontend uses the backend as a proxy instead of calling AI providers directly.
+  // ── AI calls are now handled by direct backend API calls ──────────────────────────
+  // The frontend now uses the backend API endpoints directly
+  // callClaude function remains unchanged for backward compatibility
   function patchCallClaude() {
-    if (typeof window.callClaude !== 'function') return;
-    const _orig = window.callClaude;
-    window.callClaude = async function (prompt, maxT = 700) {
-      try {
-        // Route through backend analyze endpoint for AI calls
-        const apiKey = (typeof window.getApiKey === 'function') ? window.getApiKey() : '';
-        const res = await post('/api/analyze/raw', { prompt, maxTokens: maxT }, apiKey || undefined);
-        return res.text || '';
-      } catch (err) {
-        console.warn('[VeriMediaAPI] Backend unavailable, falling back to direct call:', err.message);
-        return _orig.apply(this, arguments);
-      }
-    };
-    console.log('[VeriMediaAPI] callClaude patched → backend proxy');
+    // No patching needed - callClaude remains as-is for UI compatibility
+    console.log('[VeriMediaAPI] callClaude left unchanged for UI compatibility');
   }
 
   // ── Intercept DMCA report generation ─────────────────────────────────────
