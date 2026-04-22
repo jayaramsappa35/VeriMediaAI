@@ -8,8 +8,8 @@
   'use strict';
 
   // ── Config ────────────────────────────────────────────────────────────────
-  const API_BASE = window.VERIMEDIA_API_URL || 'https://verimedia-backend.onrender.com';
-
+  // const API_BASE = window.VERIMEDIA_API_URL || 'https://verimedia-backend.onrender.com';
+  const API_BASE = window.VERIMEDIA_API_URL || 'https://verrimedia-ai-backend.onrender.com';
   // ── Helpers ───────────────────────────────────────────────────────────────
   async function post(path, body, apiKey) {
     const headers = { 'Content-Type': 'application/json' };
