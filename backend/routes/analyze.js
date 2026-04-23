@@ -209,18 +209,23 @@ router.post('/', validateAnalysisRequest, async (req, res) => {
 
 let decisionText = "AI analysis unavailable";
 try {
-  console.log("GEMINI CALLED");
-  console.log("Prompt:", decisionPrompt);
+  console.log("🔥 GEMINI CALLED");
+  console.log("📤 Prompt:", decisionPrompt);
 
   const decisionResult = await model.generateContent(decisionPrompt);
+
+  if (!decisionResult || !decisionResult.response) {
+    throw new Error("Invalid Gemini response");
+  }
+
   const response = await decisionResult.response;
-  decisionText = response.text();
-  
-  console.log("GEMINI RESPONSE RECEIVED");
-  console.log("GEMINI OUTPUT:", decisionText);
-  
+  decisionText = response.text() || "Empty Gemini response";
+
+  console.log("✅ GEMINI RESPONSE RECEIVED");
+  console.log("🧠 GEMINI OUTPUT:", decisionText);
+
 } catch (error) {
-  console.error("GEMINI ERROR:", error.message);
+  console.error("❌ GEMINI ERROR:", error.message);
   decisionText = "AI analysis unavailable - using fallback logic";
 }
 

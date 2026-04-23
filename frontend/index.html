@@ -4841,6 +4841,12 @@ try {
 
   console.log("🔥 GEMINI RESULT:", analysisResult);
 
+  if (analysisResult && analysisResult.decision) {
+    console.log("🤖 Gemini Decision:", analysisResult.decision);
+  } else {
+    console.warn("⚠ No Gemini decision returned");
+  }
+
   showRDMStatus('✅ Gemini analysis completed!', 'green');
 
 } catch (err) {
