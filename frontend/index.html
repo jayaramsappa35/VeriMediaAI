@@ -4751,15 +4751,45 @@ function closeRefDatasetModal() {
 
 // ── SUBMIT: ADD TO REFERENCE DATASET ─────────────────────────────────────────
 async function submitToReferenceDataset() {
-  const ownership = document.getElementById('rdmOwnership').checked;
-  if(!ownership) {
-    showRDMStatus('⚠ Please confirm ownership before registering.', 'amber');
+  if (!currentFile && !currentScenario) {
+    showNotification('Please select a file or run a demo first.', 'warning');
     return;
   }
-  if(!_rdmPendingFile) {
-    showRDMStatus('⚠ No file selected.', 'amber');
-    return;
+  try {
+    showNotification('Registering to reference dataset…', 'info');
+
+    const response = await fetch(`${API_BASE}/api/fingerprint/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scenario: currentScenario || 'upload',
+        contentType: document.getElementById('refContentType')?.value || 'general',
+        fileName: currentFile?.name || 'demo-asset',
+        title: document.getElementById('refTitle')?.value || '',
+        tags: document.getElementById('refTags')?.value || '',
+      }),
+    });
+
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+    const data = await response.json();
+
+    // ✅ FIX: guard against missing decision
+    if (!data || !data.decision) {
+      console.warn('⚠ No Gemini decision returned — using fallback');
+      showNotification('Registered (AI review pending)', 'warning');
+      closeModal('refDatasetModal');
+      return;
+    }
+
+    showNotification(`✔ Registered · Decision: ${data.decision}`, 'success');
+    closeModal('refDatasetModal');
+
+  } catch (err) {
+    console.error('submitToReferenceDataset error:', err);
+    showNotification(`Registration failed: ${err.message}`, 'error');
   }
+}
   const btn = document.getElementById('rdmSubmitBtn');
   btn.disabled=true;
   btn.textContent='⏳ Generating embedding… registering fingerprint…';
