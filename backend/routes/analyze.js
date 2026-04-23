@@ -370,25 +370,50 @@ Return:
 });
 
 // ── POST /api/analyze/viral ───────────────────────────────────
-router.post('/viral', async (req, res) => {
-  const { scenario, matchCount = 1 } = req.body;
+// ✅ FIX 3: Full null-safe Gemini call with rule-based fallback
+router.post('/', async (req, res) => {
+  try {
+    const detectionResults = await runDetectionPipeline(req.body);
 
-  const score = computeViralScore(scenario, matchCount);
-  const velocity = Math.round(score * 0.8 + Math.random() * 20);
-  const acceleration = Math.round(velocity * 0.3);
-  const ppm = Math.round((matchCount + 1) * 12 + score * 0.5);
+    let geminiDecision = null;
+    const apiKey = process.env.GEMINI_API_KEY || req.headers['x-api-key'];
 
-  res.json({
-    success: true,
-    score: score / 100,
-    velocity,
-    acceleration,
-    postsPerMin: ppm,
-    anomalyFlag: score > 75,
-    anomalyScore: score / 100,
-  });
+    if (!apiKey) {
+      console.warn('⚠ GEMINI_API_KEY not set — using rule-based fallback');
+    } else {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await model.generateContent(buildPrompt(detectionResults));
+        const text = result?.response?.text?.();
+        if (text?.trim()) geminiDecision = text.trim();
+        else console.warn('⚠ No Gemini decision returned');
+      } catch (e) {
+        console.error('⚠ Gemini error:', e.message);
+      }
+    }
+
+    // Rule-based fallback
+    const finalDecision = geminiDecision ?? buildRuleBasedDecision(detectionResults);
+
+    return res.json({
+      success: true,
+      decision: finalDecision,
+      source: geminiDecision ? 'gemini' : 'rule-based',
+      ...detectionResults,
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message, decision: 'REVIEW' });
+  }
 });
 
+function buildRuleBasedDecision({ trustScore = 0.5, viralScore = 0 }) {
+  if (trustScore < 0.30 && viralScore > 85) return 'EMERGENCY TAKEDOWN';
+  if (trustScore < 0.40) return 'TAKEDOWN';
+  if (trustScore < 0.75) return 'REVIEW';
+  return 'ALLOW';
+}
 // ── Helpers ────────────────────────────────────────────────────
 function parseDecisionResponse(text, sim, integrity) {
   const upper = text.toUpperCase();
