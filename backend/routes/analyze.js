@@ -200,34 +200,42 @@ router.post('/', validateAnalysisRequest, async (req, res) => {
 
     // ── Step 2: Gemini Decision Reasoning ─────────────────────
     const decisionPrompt = buildDecisionPrompt({
-  scenario,
-  contentType,
-  sim,
-  integrity,
-  matches: processedMatches
-});
+      scenario,
+      contentType,
+      sim,
+      integrity,
+      matches: processedMatches
+    });
 
-let decisionText = "AI analysis unavailable";
-try {
-  console.log("🔥 GEMINI CALLED");
-  console.log("📤 Prompt:", decisionPrompt);
+    let decisionText = "AI analysis unavailable";
+    try {
+      console.log("🔥 GEMINI CALLED");
+      console.log("📤 Prompt:", decisionPrompt);
 
-  const decisionResult = await model.generateContent(decisionPrompt);
+      const result = await model.generateContent(decisionPrompt);
 
-  if (!decisionResult || !decisionResult.response) {
-    throw new Error("Invalid Gemini response");
-  }
+      if (!result || !result.response) {
+        throw new Error("Invalid Gemini response");
+      }
 
-  const response = await decisionResult.response;
-  decisionText = response.text() || "Empty Gemini response";
+      const response = await result.response;
 
-  console.log("✅ GEMINI RESPONSE RECEIVED");
-  console.log("🧠 GEMINI OUTPUT:", decisionText);
+      // ✅ SAFE extraction (handles all formats)
+      if (typeof response.text === "function") {
+        decisionText = response.text();
+      } else if (response.candidates?.length > 0) {
+        decisionText = response.candidates[0]?.content?.parts?.[0]?.text ||
+          "No text in Gemini response";
+      } else {
+        decisionText = "Empty Gemini response";
+      }
 
-} catch (error) {
-  console.error("❌ GEMINI ERROR:", error.message);
-  decisionText = "AI analysis unavailable - using fallback logic";
-}
+      console.log("✅ GEMINI RESPONSE RECEIVED");
+      console.log("🧠 GEMINI OUTPUT:", decisionText);
+
+    } catch (error) {
+      console.error("❌ GEMINI ERROR:", error.message);
+    }
 
     const decisionTextUpper = decisionText.toUpperCase();
     let decision = 'REVIEW';
@@ -268,6 +276,7 @@ try {
 
     res.json({
       success: true,
+      decision: decisionText,     // 👈 REQUIRED for frontend
       decResult: {
         decision: finalDecision,
         trust_score: trustScore,
